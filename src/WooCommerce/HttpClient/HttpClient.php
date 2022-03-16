@@ -90,7 +90,7 @@ class HttpClient
      */
     public function __construct($url, $consumerKey, $consumerSecret, $options)
     {
-        if (!\function_exists('curl_version')) {
+        if ( ! \function_exists('curl_version')) {
             throw new HttpClientException('cURL is NOT installed on this server', -1, new Request(), new Response());
         }
 
@@ -134,7 +134,7 @@ class HttpClient
      */
     protected function buildUrlQuery($url, $parameters = [])
     {
-        if (!empty($parameters)) {
+        if ( ! empty($parameters)) {
             $url .= '?' . \http_build_query($parameters);
         }
 
@@ -154,7 +154,7 @@ class HttpClient
     {
         // Setup authentication.
         if ($this->isSsl()) {
-            $basicAuth  = new BasicAuth(
+            $basicAuth = new BasicAuth(
                 $this->ch,
                 $this->consumerKey,
                 $this->consumerSecret,
@@ -163,7 +163,7 @@ class HttpClient
             );
             $parameters = $basicAuth->getParameters();
         } else {
-            $oAuth      = new OAuth(
+            $oAuth = new OAuth(
                 $url,
                 $this->consumerKey,
                 $this->consumerSecret,
@@ -227,7 +227,7 @@ class HttpClient
     {
         $body    = '';
         $url     = $this->url . $endpoint;
-        $hasData = !empty($data);
+        $hasData =  ! empty($data);
 
         // Setup authentication.
         $parameters = $this->authenticate($url, $method, $parameters);
@@ -249,7 +249,7 @@ class HttpClient
             $body
         );
 
-        return $this->getRequest();
+        return $this->getRequest($url);
     }
 
     /**
@@ -313,7 +313,7 @@ class HttpClient
         $followRedirects = $this->options->getFollowRedirects();
 
         \curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, $verifySsl);
-        if (!$verifySsl) {
+        if ( ! $verifySsl) {
             \curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST, $verifySsl);
         }
         if ($followRedirects) {
@@ -334,10 +334,10 @@ class HttpClient
     protected function lookForErrors($parsedResponse)
     {
         // Any non-200/201/202 response code indicates an error.
-        if (!\in_array($this->response->getCode(), ['200', '201', '202'])) {
-            $errors = isset($parsedResponse->errors) ? $parsedResponse->errors : $parsedResponse;
+        if ( ! \in_array($this->response->getCode(), ['200', '201', '202'])) {
+            $errors       = isset($parsedResponse->errors) ? $parsedResponse->errors : $parsedResponse;
             $errorMessage = '';
-            $errorCode = '';
+            $errorCode    = '';
 
             if (is_array($errors)) {
                 $errorMessage = $errors[0]->message;
@@ -359,15 +359,22 @@ class HttpClient
     /**
      * Process response.
      *
-     * @return \stdClass
+     * @return array
      */
     protected function processResponse()
     {
         $body = $this->response->getBody();
-
         // Look for UTF-8 BOM and remove.
         if (0 === strpos(bin2hex(substr($body, 0, 4)), 'efbbbf')) {
             $body = substr($body, 3);
+        }
+
+        if (substr($body, 0, 1) == '<') {
+            $body = strip_tags($body);
+        }
+
+        if (substr($body, 0, 1) !== '{' && substr($body, 0, 1) !== '[') {
+            $body = strstr($body, '[{');
         }
 
         $parsedResponse = \json_decode($body);
@@ -396,7 +403,7 @@ class HttpClient
      * @param array  $data       Request data.
      * @param array  $parameters Request parameters.
      *
-     * @return \stdClass
+     * @return array
      */
     public function request($endpoint, $method, $data = [], $parameters = [])
     {
